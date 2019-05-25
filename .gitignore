@@ -1,0 +1,8 @@
+Synth_core0/Debug
+Synth_core0/Release
+Synth_core1/Debug
+Synth_core1/Release
+Synth_core2/Debug
+Synth_core2/Release
+*.o
+*.d
