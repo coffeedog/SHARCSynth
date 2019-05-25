@@ -133,6 +133,10 @@ typedef struct
 
     #endif
 
+	// MIDI state
+    char midi_note_velocities[128];
+    char midi_cc_values[128];
+
 } MULTICORE_DATA;
 
 extern volatile MULTICORE_DATA *multicore_data;

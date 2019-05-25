@@ -66,8 +66,48 @@ void midi_rx_callback_arm(void) {
         // Read the new byte
         uart_read_byte(&midi_uart_arm, &val);
 
+        if (val & 0x80) // Status byte
+        {
+        	channel = (val & 0x0F);
+        	status = (val & 0xF0);
+        	command_num = 0;
+        }
+        else
+        {
+        	switch (status)
+        	{
+        		case 0x80: // Note off
+        			if (command_num == 0)
+        			{
+        				multicore_data->midi_note_velocities[val] = 0;
+        			}
+        			break;
+        		case 0x90: // Note on
+        			if (command_num == 0)
+					{
+        				note_num = val;
+					}
+        			else if (command_num == 1)
+        			{
+						multicore_data->midi_note_velocities[note_num] = val;
+					}
+        			break;
+        		case 0xB0: // CC
+        			if (command_num == 0)
+					{
+						note_num = val;
+					}
+					else if (command_num == 1)
+					{
+						multicore_data->midi_cc_values[note_num] = val;
+					}
+        			break;
+        	}
+        	command_num ++;
+        }
+
         // Write that byte back to MIDI TX
-        uart_write_byte(&midi_uart_arm, val);
+        //uart_write_byte(&midi_uart_arm, val);
     }
 }
 
