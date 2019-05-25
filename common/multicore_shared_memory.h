@@ -133,6 +133,11 @@ typedef struct
 
     #endif
 
+	// Effects processing presets
+	uint32_t effects_preset;
+	uint32_t reverb_preset;
+	uint32_t total_effects_presets;
+
 	// MIDI state
     char midi_note_velocities[128];
     char midi_cc_values[128];
