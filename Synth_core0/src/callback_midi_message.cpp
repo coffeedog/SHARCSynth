@@ -79,7 +79,7 @@ void midi_rx_callback_arm(void) {
         		case 0x80: // Note off
         			if (command_num == 0)
         			{
-        				multicore_data->midi_note_velocities[val] = 0;
+        				multicore_data->midi_note[val].velocity = 0;
         			}
         			break;
         		case 0x90: // Note on
@@ -89,7 +89,7 @@ void midi_rx_callback_arm(void) {
 					}
         			else if (command_num == 1)
         			{
-						multicore_data->midi_note_velocities[note_num] = val;
+        				multicore_data->midi_note[note_num].velocity = val
 					}
         			break;
         		case 0xB0: // CC

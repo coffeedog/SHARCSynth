@@ -119,6 +119,11 @@ int main(int argc, const char *argv[]) {
     // Initialize our selected the audio framework
     audioframework_initialize();
 
+    // Initialize the effects presets
+	multicore_data->total_effects_presets = 10;
+	multicore_data->effects_preset = 0;
+	multicore_data->reverb_preset = 0;
+
     #if defined(MIDI_UART_MANAGED_BY_ARM_CORE) && (MIDI_UART_MANAGED_BY_ARM_CORE)
     if (midi_setup_arm()) {
         log_event(EVENT_INFO, "SHARC Core 1 is configured to process MIDI");
@@ -127,6 +132,13 @@ int main(int argc, const char *argv[]) {
         log_event(EVENT_FATAL, "Error initializing the MIDI interface for SHARC Core 1!");
     }
     #endif
+
+    // Clear MIDI data
+    for (int i = 0; i < 128; i ++)
+    {
+    	multicore_data->midi_note[i].velocity = 0;
+    	multicore_data->midi_cc_values[i] = 0;
+    }
 
     // Start the cores
     log_event(EVENT_INFO, "Starting the SHARC cores...");

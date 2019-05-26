@@ -11,6 +11,12 @@
 #include "audio_system_config.h"
 #include "drivers/bm_event_logging_driver/bm_event_logging.h"
 
+typedef struct
+{
+	char velocity;
+	char velocity_prev; // Used to compare if anything has changed between SHARC and ARM core
+} midi_note_state;
+
 /*
  * This structure lives in L2 memory where the MCAPI memory normally live
  * It's important to ensure that MCAPI is not enabled if you are using this
@@ -139,7 +145,7 @@ typedef struct
 	uint32_t total_effects_presets;
 
 	// MIDI state
-    char midi_note_velocities[128];
+    midi_note_state midi_note[128];
     char midi_cc_values[128];
 
 } MULTICORE_DATA;
