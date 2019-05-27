@@ -191,6 +191,7 @@
 /*
  * Place any initialization code here for the audio processing
  */
+
 SIMPLE_SYNTH synth_voices[16];
 
 void processaudio_setup(void) {
@@ -198,7 +199,7 @@ void processaudio_setup(void) {
 		 synth_setup(&synth_voices[i],
 					2000,
 					2000,
-					28000,
+					0.8,
 					20000,
 					SYNTH_TRIANGLE,
 					(float) AUDIO_SAMPLE_RATE);
@@ -234,7 +235,7 @@ void processaudio_callback(void) {
 	clear_buffer(temp_audio_accum, AUDIO_BLOCK_SIZE);
 
 	// Scan remaining channels and synthesize when playing
-	for (int i=0;i<16;i++) {
+	for (int i = 0; i < 16; i++) {
 		synth_read(&synth_voices[i], temp_audio, AUDIO_BLOCK_SIZE );
 
 		// Mix this synth voice with our accumulated audio
@@ -242,11 +243,12 @@ void processaudio_callback(void) {
 	}
 
 	// Scale and copy the synthesized audio to our output buffers
+	copy_buffer(temp_audio_accum, audiochannel_0_left_out, AUDIO_BLOCK_SIZE);
+	copy_buffer(temp_audio_accum, audiochannel_0_right_out, AUDIO_BLOCK_SIZE);
+
 	gain_buffer(audiochannel_0_left_out, 0.25, AUDIO_BLOCK_SIZE);
 	gain_buffer(audiochannel_0_right_out, 0.25, AUDIO_BLOCK_SIZE);
 }
-
-#if (USE_BOTH_CORES_TO_PROCESS_AUDIO)
 
 /*
  * When using a dual core configuration, SHARC Core 1 is responsible for routing the
@@ -269,10 +271,8 @@ void processaudio_output_routing(void) {
         // Send audio from SHARC Core 2 to the SPDIF transmitter as well
         audiochannel_spdif_0_left_out[i]  = audiochannel_from_sharc_core2_0_left[i];
         audiochannel_spdif_0_right_out[i] = audiochannel_from_sharc_core2_0_right[i];
-        #endif
     }
 }
-#endif
 
 /*
  * This loop function is like a thread with a low priority.  This is good place to process
@@ -281,18 +281,45 @@ void processaudio_output_routing(void) {
 void processaudio_background_loop(void) {
 
 	// Process MIDI data
-	for (int i = 0; i < 128; i ++)
+	for (uint32_t i = 0; i < 16; i ++)
 	{
-		if (multicore_data->midi_note[i].velocity != multicore_data->midi_note[i].velocity_prev)
+		// Attack
+		if (multicore_data->midi_cc_values[0])
 		{
-			multicore_data->midi_note[i].velocity_prev = multicore_data->midi_note[i].velocity;
-			if (multicore_data->midi_note[i].velocity == 0)
+			synth_voices[i].env_attack = 20 * (multicore_data->midi_cc_values[0] + 1);
+		}
+		// Decay
+		if (multicore_data->midi_cc_values[1])
+		{
+			synth_voices[i].env_decay = 80 * (multicore_data->midi_cc_values[1] + 1);
+		}
+		// Sustain
+		if (multicore_data->midi_cc_values[2])
+		{
+			synth_voices[i].env_sustain = 80 * (multicore_data->midi_cc_values[2] + 1);
+		}
+		// Release
+		if (multicore_data->midi_cc_values[3])
+		{
+			synth_voices[i].env_release = 240 * (multicore_data->midi_cc_values[3] + 1);
+		}
+	}
+
+	for (uint32_t i = 0; i < 128; i ++)
+	{
+		char vel = multicore_data->midi_note[i].velocity;
+		if (multicore_data->midi_note[i].velocity_prev != vel)
+		{
+			multicore_data->midi_note[i].velocity_prev = vel;
+			if (vel == 0)
 			{
 				bool found = false;
 				int indx = 0;
 				do {
-					if (synth_voices[indx].playing && synth_voices[indx].note == i ) {
-						synth_stop_note( &synth_voices[indx] );
+					if (synth_voices[indx].playing && synth_voices[indx].note == i)
+					{
+						log_event(EVENT_INFO, "Stop synth");
+						synth_stop_note(&synth_voices[indx]);
 						found = true;
 					}
 					indx++;
@@ -303,8 +330,10 @@ void processaudio_background_loop(void) {
 				bool found = false;
 				int indx = 0;
 				do {
-					if (!synth_voices[indx].playing) {
-						synth_play_note( &synth_voices[indx], i, (float)(multicore_data->midi_note[i].velocity)*(1.0/128.0) );
+					if (!synth_voices[indx].playing)
+					{
+						log_event(EVENT_INFO, "Start synth");
+						synth_play_note(&synth_voices[indx], i, (float)(vel) / 128.f);
 						found = true;
 					}
 					indx++;

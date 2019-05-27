@@ -96,7 +96,7 @@ int main(int argc, const char *argv[]) {
                                  (float)CORE_CLOCK_FREQ_HZ);
 
     // Send logged events to UART0 (p8 connector on the SHARC Audio Module)
-    event_logging_connect_uart(UART_BAUD_RATE_115200,
+    event_logging_connect_uart(UART_BAUD_RATE_57600,
                                UART_SERIAL_8N1,
                                UART_SAM_DEVICE_FTDI);
 
@@ -126,7 +126,7 @@ int main(int argc, const char *argv[]) {
 
     #if defined(MIDI_UART_MANAGED_BY_ARM_CORE) && (MIDI_UART_MANAGED_BY_ARM_CORE)
     if (midi_setup_arm()) {
-        log_event(EVENT_INFO, "SHARC Core 1 is configured to process MIDI");
+        log_event(EVENT_INFO, "ARM Core is configured to process MIDI");
     }
     else {
         log_event(EVENT_FATAL, "Error initializing the MIDI interface for SHARC Core 1!");

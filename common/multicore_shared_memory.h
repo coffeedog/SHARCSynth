@@ -147,6 +147,7 @@ typedef struct
 	// MIDI state
     midi_note_state midi_note[128];
     char midi_cc_values[128];
+    char midi_cc_values_prev[128];
 
 } MULTICORE_DATA;
 

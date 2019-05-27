@@ -48,7 +48,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/system}&quot;"/>
 									<listOptionValue builtIn="false" value="${ProjDirPath}/../"/>
 								</option>
-								<option id="arm.base.compiler.option.additionaloptions.798319902" superClass="arm.base.compiler.option.additionaloptions" valueType="stringList">
+								<option id="arm.base.compiler.option.additionaloptions.798319902" name="Additional options:" superClass="arm.base.compiler.option.additionaloptions" valueType="stringList">
 									<listOptionValue builtIn="false" value="--std=gnu99"/>
 								</option>
 								<inputType id="arm.toolchain.bare.c.input.2045240317" name="C Source" superClass="arm.toolchain.bare.c.input"/>
@@ -183,6 +183,9 @@
 								<option id="arm.base.compiler.option.include.paths.1229644322" name="Additional include directories (-I):" superClass="arm.base.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/system}&quot;"/>
 									<listOptionValue builtIn="false" value="${ProjDirPath}/../"/>
+								</option>
+								<option id="arm.base.compiler.option.additionaloptions.1721180398" superClass="arm.base.compiler.option.additionaloptions" valueType="stringList">
+									<listOptionValue builtIn="false" value="--std=gnu99"/>
 								</option>
 								<inputType id="arm.toolchain.bare.c.input.466469425" name="C Source" superClass="arm.toolchain.bare.c.input"/>
 							</tool>

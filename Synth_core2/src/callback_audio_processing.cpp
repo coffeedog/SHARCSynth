@@ -20,6 +20,10 @@
 // Prototypes for these functions
 #include "callback_audio_processing.h"
 
+#include "audio_processing/audio_elements/audio_utilities.h"
+#include "audio_processing/audio_elements/biquad_filter.h"
+#include "audio_processing/audio_elements/integer_delay_lpf.h"
+
 /*
  *
  * Available Processing Power
@@ -110,14 +114,38 @@
  *  audio that was processed before the callback.
  */
 
-/*
- * Place any initialization code here for your audio processing algorithms
- */
-void processaudio_setup(void) {
+BIQUAD_FILTER lp_filter;
+float pm lp_filter_coeffs[4];
+//BIQUAD_FILTER hp_filter;
+//float pm hp_filter_coeffs[4];
+DELAY_LPF audio_delay;
+float    section("seg_sdram") delay_buffer[AUDIO_SAMPLE_RATE*2];
 
-    // *******************************************************************************
-    // Add any custom setup code here
-    // *******************************************************************************
+void processaudio_setup(void) {
+	filter_setup(&lp_filter,
+				 BIQUAD_TYPE_LPF,
+				 BIQUAD_TRANS_MED,
+				 lp_filter_coeffs,
+				 3000.0,  // Center frequency
+				 4.0,    // Q
+				 1.0,    // Gain (db)
+				 AUDIO_SAMPLE_RATE);
+//	filter_setup(&hp_filter,
+//				 BIQUAD_TYPE_HPF,
+//				 BIQUAD_TRANS_MED,
+//				 hp_filter_coeffs,
+//				 100.0,  // Center frequency
+//				 4.0,    // Q
+//				 1.0,    // Gain (db)
+//				 AUDIO_SAMPLE_RATE);
+
+	delay_setup(&audio_delay,
+				delay_buffer,
+				AUDIO_SAMPLE_RATE*2,
+				AUDIO_SAMPLE_RATE*0.25, // set delay line initially to 0.25 seconds
+				0.8,  // Feedthrough
+				0.6,  // Feedback
+				0.0); // Dampening coefficient (0=no dampening)
 }
 
  /*
@@ -143,62 +171,28 @@ void processaudio_setup(void) {
 // When debugging audio algorithms, helpful to comment out this pragma for more linear single stepping.
 #pragma optimize_for_speed
 void processaudio_callback(void) {
+	float audio_temp[AUDIO_BLOCK_SIZE];
+	float audio_temp2[AUDIO_BLOCK_SIZE];
 
-    int i;
+	clear_buffer(audio_temp, AUDIO_BLOCK_SIZE);
+	clear_buffer(audio_temp2, AUDIO_BLOCK_SIZE);
 
-    for (i = 0; i < AUDIO_BLOCK_SIZE; i++) {
+	// Run filters on incoming L/R input audio
+	filter_read(&lp_filter, audiochannel_0_left_in, audio_temp, AUDIO_BLOCK_SIZE);
+//	filter_read(&hp_filter, audio_temp, audio_temp2, AUDIO_BLOCK_SIZE);
 
-        // *******************************************************************************
-        // Replace the pass-through code below with your custom audio processing code here
-        // *******************************************************************************
+	// Run filtered audio through delay lines and send to L/R/ output audio
+	delay_read(&audio_delay, audio_temp, audio_temp2, AUDIO_BLOCK_SIZE);
 
-        audiochannel_0_left_out[i]  = audiochannel_0_left_in[i];
-        audiochannel_0_right_out[i] = audiochannel_0_right_in[i];
+    for (int i = 0; i < AUDIO_BLOCK_SIZE; i++) {
+    	audiochannel_0_left_out[i]  = audio_temp2[i];
+    	audiochannel_0_right_out[i] = audio_temp2[i];
         audiochannel_1_left_out[i]  = audiochannel_1_left_in[i];
         audiochannel_1_right_out[i] = audiochannel_1_right_in[i];
         audiochannel_2_left_out[i]  = audiochannel_2_left_in[i];
         audiochannel_2_right_out[i] = audiochannel_2_right_in[i];
         audiochannel_3_left_out[i]  = audiochannel_3_left_in[i];
         audiochannel_3_right_out[i] = audiochannel_3_right_in[i];
-
-        // If the automotive board is connected, process an additional 8 (16 total) channels
-        #if defined(FRAMEWORK_16CH_SINGLE_OR_DUAL_CORE_AUTOMOTIVE) && FRAMEWORK_16CH_SINGLE_OR_DUAL_CORE_AUTOMOTIVE
-
-            audiochannel_4_left_out[i]  = audiochannel_4_left_in[i];
-            audiochannel_4_right_out[i] = audiochannel_4_right_in[i];
-            audiochannel_5_left_out[i]  = audiochannel_5_left_in[i];
-            audiochannel_5_right_out[i] = audiochannel_5_right_in[i];
-            audiochannel_6_left_out[i]  = audiochannel_6_left_in[i];
-            audiochannel_6_right_out[i] = audiochannel_6_right_in[i];
-            audiochannel_7_left_out[i]  = audiochannel_7_left_in[i];
-            audiochannel_7_right_out[i] = audiochannel_7_right_in[i];
-
-        #endif
-
-        // If we're using Faust, route audio into the flow
-        #if defined(USE_FAUST_ALGORITHM_CORE2) && USE_FAUST_ALGORITHM_CORE2
-
-            // Mix in 8 channel audio from Faust
-            audiochannel_0_left_out[i]  = audioChannel_faust_0_left_out[i];
-            audiochannel_0_right_out[i] = audioChannel_faust_0_right_out[i];
-            audiochannel_1_left_out[i]  = audioChannel_faust_1_left_out[i];
-            audiochannel_1_right_out[i] = audioChannel_faust_1_right_out[i];
-            audiochannel_2_left_out[i]  = audioChannel_faust_2_left_out[i];
-            audiochannel_2_right_out[i] = audioChannel_faust_2_right_out[i];
-            audiochannel_3_left_out[i]  = audioChannel_faust_3_left_out[i];
-            audiochannel_3_right_out[i] = audioChannel_faust_3_right_out[i];
-
-            // Route 8 channel audio to Faust for next block
-            audioChannel_faust_0_left_in[i]  = audiochannel_0_left_in[i];
-            audioChannel_faust_0_right_in[i] = audiochannel_0_right_in[i];
-            audioChannel_faust_1_left_in[i]  = audiochannel_1_left_in[i];
-            audioChannel_faust_1_right_in[i] = audiochannel_1_right_in[i];
-            audioChannel_faust_2_left_in[i]  = audiochannel_2_left_in[i];
-            audioChannel_faust_2_right_in[i] = audiochannel_2_right_in[i];
-            audioChannel_faust_3_left_in[i]  = audiochannel_3_left_in[i];
-            audioChannel_faust_3_right_in[i] = audiochannel_3_right_in[i];
-
-        #endif
     }
 }
 
@@ -207,10 +201,30 @@ void processaudio_callback(void) {
  * large FFTs in the background without interrupting the audio processing callback.
  */
 void processaudio_background_loop(void) {
-
-    // *******************************************************************************
-    // Add any custom background processing here
-    // *******************************************************************************
+	char val = multicore_data->midi_cc_values[4];
+	if (multicore_data->midi_cc_values_prev[4] != val)
+	{
+		multicore_data->midi_cc_values_prev[4] = val;
+		delay_modify_feedback(&audio_delay, 0.9 * (val / 128.f));
+	}
+	val = multicore_data->midi_cc_values[5];
+	if (multicore_data->midi_cc_values_prev[5] != val)
+	{
+		multicore_data->midi_cc_values_prev[5] = val;
+		delay_modify_length(&audio_delay, (uint32_t)((float)AUDIO_SAMPLE_RATE * (val / 128.f)));
+	}
+	val = multicore_data->midi_cc_values[6];
+	if (multicore_data->midi_cc_values_prev[6] != val)
+	{
+		multicore_data->midi_cc_values_prev[6] = val;
+		filter_modify_freq(&lp_filter, (3000.f * (val / 128.f)) + 100.f);
+	}
+//	val = multicore_data->midi_cc_values[7];
+//	if (multicore_data->midi_cc_values_prev[7] != val)
+//	{
+//		multicore_data->midi_cc_values_prev[7] = val;
+//		filter_modify_freq(&hp_filter, (3000.f * (val / 128.f)) + 100.f);
+//	}
 }
 
 /*

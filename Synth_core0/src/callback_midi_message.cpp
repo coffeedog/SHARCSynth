@@ -46,16 +46,18 @@ bool midi_setup_arm(void) {
     return true;
 }
 
+static uint8_t midi_status = 0;
+static uint8_t midi_channel = 0;
+static uint8_t midi_note_num = 0;
+static uint8_t midi_byte_num = 0;
+
 /**
  * @brief Callback when new MIDI bytes arrive
  */
 void midi_rx_callback_arm(void) {
 
     uint8_t val;
-    uint8_t status = 0;
-    uint8_t channel = 0;
-    uint8_t note_num = 0;
-    uint8_t command_num = 0;
+
 
     // Keep reading bytes from MIDI FIFO until we have processed all of them
     while (uart_available(&midi_uart_arm)) {
@@ -66,44 +68,56 @@ void midi_rx_callback_arm(void) {
         // Read the new byte
         uart_read_byte(&midi_uart_arm, &val);
 
-        if (val & 0x80) // Status byte
+        if ((val & 0x80) == 0x80) // Status byte
         {
-        	channel = (val & 0x0F);
-        	status = (val & 0xF0);
-        	command_num = 0;
+        	midi_channel = (val & 0x0F);
+        	midi_status = (val & 0xF0);
+        	midi_note_num = 0;
+        	midi_byte_num = 0;
         }
-        else
+        else // Data byte
         {
-        	switch (status)
+        	switch (midi_status)
         	{
         		case 0x80: // Note off
-        			if (command_num == 0)
+        			if (midi_byte_num == 0)
         			{
         				multicore_data->midi_note[val].velocity = 0;
+        				log_event(EVENT_INFO, "Received MIDI note-off message");
         			}
         			break;
         		case 0x90: // Note on
-        			if (command_num == 0)
+        			if (midi_byte_num == 0)
 					{
-        				note_num = val;
+        				midi_note_num = val;
 					}
-        			else if (command_num == 1)
+        			else if (midi_byte_num == 1)
         			{
-        				multicore_data->midi_note[note_num].velocity = val
+        				multicore_data->midi_note[midi_note_num].velocity = val;
+        				log_event(EVENT_INFO, "Received MIDI note-on message");
 					}
         			break;
         		case 0xB0: // CC
-        			if (command_num == 0)
+        			if (midi_byte_num == 0)
 					{
-						note_num = val;
+						midi_note_num = val;
 					}
-					else if (command_num == 1)
+					else if (midi_byte_num == 1)
 					{
-						multicore_data->midi_cc_values[note_num] = val;
+						if (midi_note_num == 74)
+						{
+							multicore_data->midi_cc_values[midi_channel] = val;
+						}
+        				log_event(EVENT_INFO, "Received MIDI CC message");
 					}
         			break;
+        		default:
+        			log_event(EVENT_WARN, "Unknown MIDI message");
+        			break;
+
+
         	}
-        	command_num ++;
+        	midi_byte_num ++;
         }
 
         // Write that byte back to MIDI TX
